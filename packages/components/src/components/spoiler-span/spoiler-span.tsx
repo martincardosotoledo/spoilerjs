@@ -163,7 +163,7 @@ export class SpoilerSpan {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
         }
-        // Remove canvases from body
+        // Remove canvases from element
         this.canvases.forEach(canvas => {
             if (canvas.parentNode) {
                 canvas.parentNode.removeChild(canvas);
@@ -232,9 +232,8 @@ export class SpoilerSpan {
         if (slotNodes.length === 0) return;
 
         const range = document.createRange();
+        const elementRect = this.el.getBoundingClientRect();
         let canvasIndex = 0;
-        const scrollX = window.scrollX ?? window.pageXOffset;
-        const scrollY = window.scrollY ?? window.pageYOffset;
 
         slotNodes.forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
@@ -245,8 +244,8 @@ export class SpoilerSpan {
                     const rect = rects[i];
                     if (rect.width > 0 && rect.height > 0 && canvasIndex < this.canvases.length) {
                         const canvas = this.canvases[canvasIndex];
-                        const newLeft = rect.left + scrollX;
-                        const newTop = rect.top + scrollY;
+                        const newLeft = rect.left - elementRect.left;
+                        const newTop = rect.top - elementRect.top;
 
                         // Only update if position changed (avoid unnecessary style updates)
                         const currentLeft = parseFloat(canvas.style.left);
@@ -268,8 +267,8 @@ export class SpoilerSpan {
                     const rect = rects[i];
                     if (rect.width > 0 && rect.height > 0) {
                         const canvas = this.canvases[canvasIndex];
-                        const newLeft = rect.left + scrollX;
-                        const newTop = rect.top + scrollY;
+                        const newLeft = rect.left - elementRect.left;
+                        const newTop = rect.top - elementRect.top;
 
                         const currentLeft = parseFloat(canvas.style.left);
                         const currentTop = parseFloat(canvas.style.top);
@@ -344,7 +343,7 @@ export class SpoilerSpan {
             canvas.style.pointerEvents = 'none';
             canvas.style.zIndex = '1';
 
-            document.body.appendChild(canvas);
+            this.el.appendChild(canvas);
 
             const ctx = canvas.getContext('2d', { alpha: true });
             if (!ctx) {
@@ -373,9 +372,8 @@ export class SpoilerSpan {
         if (slotNodes.length === 0) return;
 
         const range = document.createRange();
+        const elementRect = this.el.getBoundingClientRect();
         let canvasIndex = 0;
-        const scrollX = window.scrollX ?? window.pageXOffset;
-        const scrollY = window.scrollY ?? window.pageYOffset;
 
         slotNodes.forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
@@ -386,8 +384,8 @@ export class SpoilerSpan {
                     const rect = rects[i];
                     if (rect.width > 0 && rect.height > 0 && canvasIndex < this.canvases.length) {
                         const canvas = this.canvases[canvasIndex];
-                        canvas.style.left = `${rect.left + scrollX}px`;
-                        canvas.style.top = `${rect.top + scrollY}px`;
+                        canvas.style.left = `${rect.left - elementRect.left}px`;
+                        canvas.style.top = `${rect.top - elementRect.top}px`;
                         canvasIndex++;
                     }
                 }
@@ -399,8 +397,8 @@ export class SpoilerSpan {
                     const rect = rects[i];
                     if (rect.width > 0 && rect.height > 0) {
                         const canvas = this.canvases[canvasIndex];
-                        canvas.style.left = `${rect.left + scrollX}px`;
-                        canvas.style.top = `${rect.top + scrollY}px`;
+                        canvas.style.left = `${rect.left - elementRect.left}px`;
+                        canvas.style.top = `${rect.top - elementRect.top}px`;
                         canvasIndex++;
                     }
                 }
@@ -415,22 +413,21 @@ export class SpoilerSpan {
         if (slotNodes.length === 0) return boxes;
 
         // Create a temporary span to measure text
-        const range = document.createRange();
-        const scrollX = window.scrollX ?? window.pageXOffset;
-        const scrollY = window.scrollY ?? window.pageYOffset;
+const range = document.createRange();
+        const elementRect = this.el.getBoundingClientRect();
 
         slotNodes.forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
                 range.selectNodeContents(node);
                 const rects = range.getClientRects();
 
-                // Convert viewport rects to document coordinates so canvases can be absolutely positioned on the page
+                // Convert viewport rects to element coordinates so canvases can be absolutely positioned within the element
                 for (let i = 0; i < rects.length; i++) {
                     const rect = rects[i];
                     if (rect.width > 0 && rect.height > 0) {
                         boxes.push({
-                            x: rect.left + scrollX,
-                            y: rect.top + scrollY,
+                            x: rect.left - elementRect.left,
+                            y: rect.top - elementRect.top,
                             width: rect.width,
                             height: rect.height,
                         });
@@ -444,8 +441,8 @@ export class SpoilerSpan {
                     const rect = rects[i];
                     if (rect.width > 0 && rect.height > 0) {
                         boxes.push({
-                            x: rect.left + scrollX,
-                            y: rect.top + scrollY,
+                            x: rect.left - elementRect.left,
+                            y: rect.top - elementRect.top,
                             width: rect.width,
                             height: rect.height,
                         });
