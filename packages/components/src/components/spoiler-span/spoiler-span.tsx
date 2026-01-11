@@ -91,11 +91,36 @@ export class SpoilerSpan {
     // Frame throttling for FPS control
     private lastFrameTime: number = 0;
     private frameInterval: number = 1000 / 60; // Will be updated based on fps prop
+    // IntersectionObserver for visibility detection
+    private intersectionObserver: IntersectionObserver;
+    private isVisible: boolean = false;
+    private setupRetryCount: number = 0;
+    private maxSetupRetries: number = 5;
 
     componentDidLoad() {
         // Calculate frame interval based on fps prop
         this.frameInterval = 1000 / Math.max(1, this.fps);
-        this.setupSpoiler();
+        
+        // Setup IntersectionObserver for visibility detection
+        this.intersectionObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && !this.isVisible && !this.revealed) {
+                        this.isVisible = true;
+                        // Small delay to ensure complete rendering
+                        setTimeout(() => this.setupSpoilerWithRetry(), 100);
+                    } else if (!entry.isIntersecting) {
+                        this.isVisible = false;
+                    }
+                });
+            },
+            { threshold: 0.1 }
+        );
+
+        this.intersectionObserver.observe(this.el);
+        
+        // Try initial setup (will be retried if not visible)
+        this.setupSpoilerWithRetry();
 
         // ResizeObserver for container size changes
         this.resizeObserver = new ResizeObserver((entries) => {
@@ -146,6 +171,11 @@ export class SpoilerSpan {
             this.resizeObserver.disconnect();
         }
 
+        // Disconnect IntersectionObserver
+        if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+        }
+
         // Clear any pending debounce timers
         if (this.updateDebounceTimer !== null) {
             clearTimeout(this.updateDebounceTimer);
@@ -175,6 +205,26 @@ export class SpoilerSpan {
     }
 
     /**
+     * Setup spoiler with retry logic for visibility scenarios
+     */
+    private setupSpoilerWithRetry() {
+        const boundingBoxes = this.getTextBoundingBoxes();
+        const hasValidDimensions = boundingBoxes.some(box => box.width > 0 && box.height > 0);
+        
+        if (!hasValidDimensions && this.setupRetryCount < this.maxSetupRetries) {
+            this.setupRetryCount++;
+            const retryDelay = Math.min(200 * Math.pow(2, this.setupRetryCount), 1000);
+            setTimeout(() => this.setupSpoilerWithRetry(), retryDelay);
+            return;
+        }
+        
+        if (hasValidDimensions) {
+            this.setupRetryCount = 0;
+            this.setupSpoiler();
+        }
+    }
+
+    /**
      * Handle size changes - regenerate particles with minimal debounce
      */
     private handleSizeChange() {
@@ -182,7 +232,7 @@ export class SpoilerSpan {
             clearTimeout(this.setupDebounceTimer);
         }
         this.setupDebounceTimer = window.setTimeout(() => {
-            this.setupSpoiler();
+            this.setupSpoilerWithRetry();
             this.setupDebounceTimer = null;
         }, 50); // Reduced from 100ms for faster response
     }
@@ -310,7 +360,8 @@ export class SpoilerSpan {
         // Get bounding boxes for text relative to container
         const boundingBoxes = this.getTextBoundingBoxes();
 
-        if (boundingBoxes.length === 0) {
+        // Validate dimensions before proceeding
+        if (boundingBoxes.length === 0 || !boundingBoxes.some(box => box.width > 0 && box.height > 0)) {
             return;
         }
 
